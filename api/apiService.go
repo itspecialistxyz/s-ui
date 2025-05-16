@@ -47,8 +47,8 @@ func (a *ApiService) getData(c *gin.Context) (interface{}, error) {
 
 	sysInfo := a.ServerService.GetSingboxInfo()
 	if sysInfo["running"] == false {
-		logs := a.ServerService.GetLogs("1", "debug")
-		if len(logs) > 0 {
+		logs, err := a.ServerService.GetLogs("1", "debug")
+		if err == nil && len(logs) > 0 {
 			data["lastLog"] = logs[0]
 		}
 	}
@@ -202,7 +202,11 @@ func (a *ApiService) GetOnlines(c *gin.Context) {
 func (a *ApiService) GetLogs(c *gin.Context) {
 	count := c.Query("c")
 	level := c.Query("l")
-	logs := a.ServerService.GetLogs(count, level)
+	logs, err := a.ServerService.GetLogs(count, level)
+	if err != nil {
+		jsonMsg(c, "", err)
+		return
+	}
 	jsonObj(c, logs, nil)
 }
 
@@ -210,14 +214,22 @@ func (a *ApiService) CheckChanges(c *gin.Context) {
 	actor := c.Query("a")
 	chngKey := c.Query("k")
 	count := c.Query("c")
-	changes := a.ConfigService.GetChanges(actor, chngKey, count)
+	changes, err := a.ConfigService.GetChanges(actor, chngKey, count)
+	if err != nil {
+		jsonMsg(c, "", err)
+		return
+	}
 	jsonObj(c, changes, nil)
 }
 
 func (a *ApiService) GetKeypairs(c *gin.Context) {
 	kType := c.Query("k")
 	options := c.Query("o")
-	keypair := a.ServerService.GenKeypair(kType, options)
+	keypair, err := a.ServerService.GenKeypair(kType, options)
+	if err != nil {
+		jsonMsg(c, "", err)
+		return
+	}
 	jsonObj(c, keypair, nil)
 }
 

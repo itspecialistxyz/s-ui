@@ -125,7 +125,7 @@ func (s *SettingService) getString(db *gorm.DB, key string) (string, error) {
 		// }
 		return value, nil
 	} else if err != nil {
-		return "", common.NewErrorf("failed to get setting '%s': %w", key, err)
+		return "", common.NewErrorf("failed to get setting '%s': %v", key, err)
 	}
 	return setting.Value, nil
 }
@@ -140,7 +140,7 @@ func (s *SettingService) saveSetting(db *gorm.DB, key string, value string) erro
 			Value: value,
 		}).Error
 	} else if err != nil {
-		return common.NewErrorf("failed to get setting '%s' for save: %w", key, err)
+		return common.NewErrorf("failed to get setting '%s' for save: %v", key, err)
 	}
 	setting.Value = value // Update existing setting's value
 	return db.Save(setting).Error
@@ -160,7 +160,7 @@ func (s *SettingService) Update(tx *gorm.DB, key string, value string) error {
 	case "webPort":
 		i, errConv := strconv.Atoi(value)
 		if errConv != nil {
-			return common.NewErrorf("failed to parse webPort to int: %w", errConv)
+			return common.NewErrorf("failed to parse webPort to int: %v", errConv)
 		}
 		typedValue = i
 	case "webCertFile":
@@ -187,20 +187,20 @@ func (s *SettingService) Update(tx *gorm.DB, key string, value string) error {
 	case "sessionMaxAge":
 		i, errConv := strconv.Atoi(value)
 		if errConv != nil {
-			return common.NewErrorf("failed to parse sessionMaxAge to int: %w", errConv)
+			return common.NewErrorf("failed to parse sessionMaxAge to int: %v", errConv)
 		}
 		typedValue = i
 	case "trafficAge":
 		i, errConv := strconv.Atoi(value)
 		if errConv != nil {
-			return common.NewErrorf("failed to parse trafficAge to int: %w", errConv)
+			return common.NewErrorf("failed to parse trafficAge to int: %v", errConv)
 		}
 		typedValue = i
 	case "timeLocation":
 		// Validate if it's a valid time location
 		_, errConv := time.LoadLocation(value)
 		if errConv != nil {
-			return common.NewErrorf("invalid time location '%s': %w", value, errConv)
+			return common.NewErrorf("invalid time location '%s': %v", value, errConv)
 		}
 		typedValue = value
 	case "subListen":
@@ -208,7 +208,7 @@ func (s *SettingService) Update(tx *gorm.DB, key string, value string) error {
 	case "subPort":
 		i, errConv := strconv.Atoi(value)
 		if errConv != nil {
-			return common.NewErrorf("failed to parse subPort to int: %w", errConv)
+			return common.NewErrorf("failed to parse subPort to int: %v", errConv)
 		}
 		typedValue = i
 	case "subPath":
@@ -229,19 +229,19 @@ func (s *SettingService) Update(tx *gorm.DB, key string, value string) error {
 	case "subUpdates":
 		i, errConv := strconv.Atoi(value)
 		if errConv != nil {
-			return common.NewErrorf("failed to parse subUpdates to int: %w", errConv)
+			return common.NewErrorf("failed to parse subUpdates to int: %v", errConv)
 		}
 		typedValue = i
 	case "subEncode":
 		b, errConv := strconv.ParseBool(value)
 		if errConv != nil {
-			return common.NewErrorf("failed to parse subEncode to bool: %w", errConv)
+			return common.NewErrorf("failed to parse subEncode to bool: %v", errConv)
 		}
 		typedValue = b
 	case "subShowInfo":
 		b, errConv := strconv.ParseBool(value)
 		if errConv != nil {
-			return common.NewErrorf("failed to parse subShowInfo to bool: %w", errConv)
+			return common.NewErrorf("failed to parse subShowInfo to bool: %v", errConv)
 		}
 		typedValue = b
 	case "subURI":
@@ -285,7 +285,7 @@ func (s *SettingService) Update(tx *gorm.DB, key string, value string) error {
 
 	err = s.saveSetting(dbToUse, key, valueStr) // Pass dbToUse (which could be tx)
 	if err != nil {
-		return common.NewErrorf("Update: failed to save setting for key '%s': %w", key, err)
+		return common.NewErrorf("Update: failed to save setting for key '%s': %v", key, err)
 	}
 	return nil
 }
@@ -480,47 +480,47 @@ func (s *SettingService) GetWebSettings() (map[string]interface{}, error) {
 
 	strVal, err = s.getString(db, "webListen")
 	if err != nil {
-		return nil, common.NewErrorf("GetWebSettings: failed to get webListen: %w", err)
+		return nil, common.NewErrorf("GetWebSettings: failed to get webListen: %v", err)
 	}
 	settings["webListen"] = strVal
 
 	strVal, err = s.getString(db, "webDomain")
 	if err != nil {
-		return nil, common.NewErrorf("GetWebSettings: failed to get webDomain: %w", err)
+		return nil, common.NewErrorf("GetWebSettings: failed to get webDomain: %v", err)
 	}
 	settings["webDomain"] = strVal
 
 	strVal, err = s.getString(db, "webPort")
 	if err != nil {
-		return nil, common.NewErrorf("GetWebSettings: failed to get webPort: %w", err)
+		return nil, common.NewErrorf("GetWebSettings: failed to get webPort: %v", err)
 	}
 	intVal, err = strconv.Atoi(strVal)
 	if err != nil {
-		return nil, common.NewErrorf("GetWebSettings: failed to parse webPort: %w", err)
+		return nil, common.NewErrorf("GetWebSettings: failed to parse webPort: %v", err)
 	}
 	settings["webPort"] = intVal
 
 	strVal, err = s.getString(db, "webCertFile")
 	if err != nil {
-		return nil, common.NewErrorf("GetWebSettings: failed to get webCertFile: %w", err)
+		return nil, common.NewErrorf("GetWebSettings: failed to get webCertFile: %v", err)
 	}
 	settings["webCertFile"] = strVal
 
 	strVal, err = s.getString(db, "webKeyFile")
 	if err != nil {
-		return nil, common.NewErrorf("GetWebSettings: failed to get webKeyFile: %w", err)
+		return nil, common.NewErrorf("GetWebSettings: failed to get webKeyFile: %v", err)
 	}
 	settings["webKeyFile"] = strVal
 
 	webPath, err := s.GetWebPath() // Uses its own DB get, but applies formatting
 	if err != nil {
-		return nil, common.NewErrorf("GetWebSettings: failed to get webPath: %w", err)
+		return nil, common.NewErrorf("GetWebSettings: failed to get webPath: %v", err)
 	}
 	settings["webPath"] = webPath
 
 	strVal, err = s.getString(db, "webURI")
 	if err != nil {
-		return nil, common.NewErrorf("GetWebSettings: failed to get webURI: %w", err)
+		return nil, common.NewErrorf("GetWebSettings: failed to get webURI: %v", err)
 	}
 	settings["webURI"] = strVal
 
@@ -532,28 +532,28 @@ func (s *SettingService) GetWebSettings() (map[string]interface{}, error) {
 
 	strVal, err = s.getString(db, "sessionMaxAge")
 	if err != nil {
-		return nil, common.NewErrorf("GetWebSettings: failed to get sessionMaxAge: %w", err)
+		return nil, common.NewErrorf("GetWebSettings: failed to get sessionMaxAge: %v", err)
 	}
 	intVal, err = strconv.Atoi(strVal)
 	if err != nil {
-		return nil, common.NewErrorf("GetWebSettings: failed to parse sessionMaxAge: %w", err)
+		return nil, common.NewErrorf("GetWebSettings: failed to parse sessionMaxAge: %v", err)
 	}
 	settings["sessionMaxAge"] = intVal
 
 	// These are more general panel settings but were in the original GetWebSettings
 	strVal, err = s.getString(db, "trafficAge")
 	if err != nil {
-		return nil, common.NewErrorf("GetWebSettings: failed to get trafficAge: %w", err)
+		return nil, common.NewErrorf("GetWebSettings: failed to get trafficAge: %v", err)
 	}
 	intVal, err = strconv.Atoi(strVal)
 	if err != nil {
-		return nil, common.NewErrorf("GetWebSettings: failed to parse trafficAge: %w", err)
+		return nil, common.NewErrorf("GetWebSettings: failed to parse trafficAge: %v", err)
 	}
 	settings["trafficAge"] = intVal
 
 	timeLoc, err := s.GetTimeLocation() // Uses its own DB get
 	if err != nil {
-		return nil, common.NewErrorf("GetWebSettings: failed to get timeLocation: %w", err)
+		return nil, common.NewErrorf("GetWebSettings: failed to get timeLocation: %v", err)
 	}
 	settings["timeLocation"] = timeLoc.String() // Store as string
 
@@ -562,13 +562,13 @@ func (s *SettingService) GetWebSettings() (map[string]interface{}, error) {
 	if err != nil {
 		// If getString errors, it means it's not in DB AND not in defaultValueMap (which is now handled by adding it to the map),
 		// or it's another DB error.
-		return nil, common.NewErrorf("GetWebSettings: failed to get panelLanguage: %w", err)
+		return nil, common.NewErrorf("GetWebSettings: failed to get panelLanguage: %v", err)
 	}
 	settings["panelLanguage"] = strVal
 
 	strVal, err = s.getString(db, "panelTheme")
 	if err != nil {
-		return nil, common.NewErrorf("GetWebSettings: failed to get panelTheme: %w", err)
+		return nil, common.NewErrorf("GetWebSettings: failed to get panelTheme: %v", err)
 	}
 	settings["panelTheme"] = strVal
 
@@ -588,77 +588,77 @@ func (s *SettingService) GetSubSettings() (map[string]interface{}, error) {
 
 	strVal, err = s.getString(db, "subListen")
 	if err != nil {
-		return nil, common.NewErrorf("GetSubSettings: failed to get subListen: %w", err)
+		return nil, common.NewErrorf("GetSubSettings: failed to get subListen: %v", err)
 	}
 	settings["subListen"] = strVal
 
 	strVal, err = s.getString(db, "subPort")
 	if err != nil {
-		return nil, common.NewErrorf("GetSubSettings: failed to get subPort: %w", err)
+		return nil, common.NewErrorf("GetSubSettings: failed to get subPort: %v", err)
 	}
 	intVal, err = strconv.Atoi(strVal)
 	if err != nil {
-		return nil, common.NewErrorf("GetSubSettings: failed to parse subPort: %w", err)
+		return nil, common.NewErrorf("GetSubSettings: failed to parse subPort: %v", err)
 	}
 	settings["subPort"] = intVal
 
 	subPath, err := s.GetSubPath() // Formatted path
 	if err != nil {
-		return nil, common.NewErrorf("GetSubSettings: failed to get subPath: %w", err)
+		return nil, common.NewErrorf("GetSubSettings: failed to get subPath: %v", err)
 	}
 	settings["subPath"] = subPath
 
 	strVal, err = s.getString(db, "subDomain")
 	if err != nil {
-		return nil, common.NewErrorf("GetSubSettings: failed to get subDomain: %w", err)
+		return nil, common.NewErrorf("GetSubSettings: failed to get subDomain: %v", err)
 	}
 	settings["subDomain"] = strVal
 
 	strVal, err = s.getString(db, "subCertFile")
 	if err != nil {
-		return nil, common.NewErrorf("GetSubSettings: failed to get subCertFile: %w", err)
+		return nil, common.NewErrorf("GetSubSettings: failed to get subCertFile: %v", err)
 	}
 	settings["subCertFile"] = strVal
 
 	strVal, err = s.getString(db, "subKeyFile")
 	if err != nil {
-		return nil, common.NewErrorf("GetSubSettings: failed to get subKeyFile: %w", err)
+		return nil, common.NewErrorf("GetSubSettings: failed to get subKeyFile: %v", err)
 	}
 	settings["subKeyFile"] = strVal
 
 	strVal, err = s.getString(db, "subUpdates")
 	if err != nil {
-		return nil, common.NewErrorf("GetSubSettings: failed to get subUpdates: %w", err)
+		return nil, common.NewErrorf("GetSubSettings: failed to get subUpdates: %v", err)
 	}
 	intVal, err = strconv.Atoi(strVal)
 	if err != nil {
-		return nil, common.NewErrorf("GetSubSettings: failed to parse subUpdates: %w", err)
+		return nil, common.NewErrorf("GetSubSettings: failed to parse subUpdates: %v", err)
 	}
 	settings["subUpdates"] = intVal
 
 	strVal, err = s.getString(db, "subEncode")
 	if err != nil {
-		return nil, common.NewErrorf("GetSubSettings: failed to get subEncode: %w", err)
+		return nil, common.NewErrorf("GetSubSettings: failed to get subEncode: %v", err)
 	}
 	boolVal, err = strconv.ParseBool(strVal)
 	if err != nil {
-		return nil, common.NewErrorf("GetSubSettings: failed to parse subEncode: %w", err)
+		return nil, common.NewErrorf("GetSubSettings: failed to parse subEncode: %v", err)
 	}
 	settings["subEncode"] = boolVal
 
 	strVal, err = s.getString(db, "subShowInfo")
 	if err != nil {
-		return nil, common.NewErrorf("GetSubSettings: failed to get subShowInfo: %w", err)
+		return nil, common.NewErrorf("GetSubSettings: failed to get subShowInfo: %v", err)
 	}
 	boolVal, err = strconv.ParseBool(strVal)
 	if err != nil {
-		return nil, common.NewErrorf("GetSubSettings: failed to parse subShowInfo: %w", err)
+		return nil, common.NewErrorf("GetSubSettings: failed to parse subShowInfo: %v", err)
 	}
 	settings["subShowInfo"] = boolVal
 
 	strVal, err = s.getString(db, "subURI")
 	if err != nil {
-		return nil, common.NewErrorf("GetSubSettings: failed to get subURI: %w", err)
+		return nil, common.NewErrorf("GetSubSettings: failed to get subURI: %v", err)
 	}
 	settings["subURI"] = strVal
 
@@ -666,7 +666,7 @@ func (s *SettingService) GetSubSettings() (map[string]interface{}, error) {
 	if err != nil {
 		// If getString errors, it means it's not in DB AND not in defaultValueMap (which is now handled for subJsonExt),
 		// or it's another DB error.
-		return nil, common.NewErrorf("GetSubSettings: failed to get subJsonExt: %w", err)
+		return nil, common.NewErrorf("GetSubSettings: failed to get subJsonExt: %v", err)
 	}
 	settings["subJsonExt"] = strVal
 
@@ -682,7 +682,7 @@ func (s *SettingService) GetCoreSettings() (map[string]interface{}, error) {
 
 	coreConfigJSON, err := s.getString(db, "config")
 	if err != nil {
-		return nil, common.NewErrorf("GetCoreSettings: failed to get core config JSON: %w", err)
+		return nil, common.NewErrorf("GetCoreSettings: failed to get core config JSON: %v", err)
 	}
 	settings["coreConfig"] = coreConfigJSON // The raw JSON string for the core
 
@@ -708,4 +708,14 @@ func IsPathExists(path string) (bool, error) {
 		return false, nil
 	}
 	return false, err
+}
+
+func (s *SettingService) GetFinalSubURI(host string) (string, error) {
+	// TODO: Implement actual logic as needed
+	return "", nil
+}
+
+func (s *SettingService) GetSubJsonExt() (string, error) {
+	// TODO: Implement actual logic as needed
+	return "", nil
 }
