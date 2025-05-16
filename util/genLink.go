@@ -152,9 +152,11 @@ func naiveLink(
 				params["peer"] = sni
 			}
 			if alpn, ok := tls["alpn"].([]interface{}); ok {
-				alpnList := make([]string, len(alpn))
-				for i, v := range alpn {
-					alpnList[i] = v.(string)
+				alpnList := make([]string, 0, len(alpn))
+				for _, v := range alpn {
+					if s, ok := v.(string); ok {
+						alpnList = append(alpnList, s)
+					}
 				}
 				params["alpn"] = strings.Join(alpnList, ",")
 			}
@@ -199,9 +201,11 @@ func hysteriaLink(
 				params["peer"] = sni
 			}
 			if alpn, ok := tls["alpn"].([]interface{}); ok {
-				alpnList := make([]string, len(alpn))
-				for i, v := range alpn {
-					alpnList[i] = v.(string)
+				alpnList := make([]string, 0, len(alpn))
+				for _, v := range alpn {
+					if s, ok := v.(string); ok {
+						alpnList = append(alpnList, s)
+					}
 				}
 				params["alpn"] = strings.Join(alpnList, ",")
 			}
@@ -248,9 +252,11 @@ func hysteria2Link(
 				params["sni"] = sni
 			}
 			if alpn, ok := tls["alpn"].([]interface{}); ok {
-				alpnList := make([]string, len(alpn))
-				for i, v := range alpn {
-					alpnList[i] = v.(string)
+				alpnList := make([]string, 0, len(alpn))
+				for _, v := range alpn {
+					if s, ok := v.(string); ok {
+						alpnList = append(alpnList, s)
+					}
 				}
 				params["alpn"] = strings.Join(alpnList, ",")
 			}
@@ -297,9 +303,11 @@ func tuicLink(
 				params["sni"] = sni
 			}
 			if alpn, ok := tls["alpn"].([]interface{}); ok {
-				alpnList := make([]string, len(alpn))
-				for i, v := range alpn {
-					alpnList[i] = v.(string)
+				alpnList := make([]string, 0, len(alpn))
+				for _, v := range alpn {
+					if s, ok := v.(string); ok {
+						alpnList = append(alpnList, s)
+					}
 				}
 				params["alpn"] = strings.Join(alpnList, ",")
 			}
@@ -358,9 +366,11 @@ func vlessLink(
 				params["sni"] = sni
 			}
 			if alpn, ok := tls["alpn"].([]interface{}); ok {
-				alpnList := make([]string, len(alpn))
-				for i, v := range alpn {
-					alpnList[i] = v.(string)
+				alpnList := make([]string, 0, len(alpn))
+				for _, v := range alpn {
+					if s, ok := v.(string); ok {
+						alpnList = append(alpnList, s)
+					}
 				}
 				params["alpn"] = strings.Join(alpnList, ",")
 			}
@@ -406,9 +416,11 @@ func trojanLink(
 				params["sni"] = sni
 			}
 			if alpn, ok := tls["alpn"].([]interface{}); ok {
-				alpnList := make([]string, len(alpn))
-				for i, v := range alpn {
-					alpnList[i] = v.(string)
+				alpnList := make([]string, 0, len(alpn))
+				for _, v := range alpn {
+					if s, ok := v.(string); ok {
+						alpnList = append(alpnList, s)
+					}
 				}
 				params["alpn"] = strings.Join(alpnList, ",")
 			}
@@ -509,7 +521,9 @@ func getTransportParams(t interface{}) map[string]string {
 		if host, ok := trasport["host"].([]interface{}); ok {
 			var hosts []string
 			for _, v := range host {
-				hosts = append(hosts, v.(string))
+				if s, ok := v.(string); ok {
+					hosts = append(hosts, s)
+				}
 			}
 			params["host"] = strings.Join(hosts, ",")
 		}
@@ -547,9 +561,11 @@ func getTlsParams(t interface{}) map[string]string {
 			params["sni"] = sni
 		}
 		if alpn, ok := tls["alpn"].([]interface{}); ok {
-			alpnList := make([]string, len(alpn))
-			for i, v := range alpn {
-				alpnList[i] = v.(string)
+			alpnList := make([]string, 0, len(alpn))
+			for _, v := range alpn {
+				if s, ok := v.(string); ok {
+					alpnList = append(alpnList, s)
+				}
 			}
 			params["alpn"] = strings.Join(alpnList, ",")
 		}

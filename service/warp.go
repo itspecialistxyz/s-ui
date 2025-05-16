@@ -80,12 +80,30 @@ func (s *WarpService) RegisterWarp(ep *model.Endpoint) error {
 		return err
 	}
 
-	deviceId := rspData["id"].(string)
-	token := rspData["token"].(string)
-	license, ok := rspData["account"].(map[string]interface{})["license"].(string)
+	deviceId, ok := rspData["id"].(string)
 	if !ok {
-		logger.Debug("Error accessing license value.")
-		return err
+		return fmt.Errorf("could not parse 'id' from registration response")
+	}
+	token, ok := rspData["token"].(string)
+	if !ok {
+		return fmt.Errorf("could not parse 'token' from registration response")
+	}
+
+	accountData, ok := rspData["account"].(map[string]interface{})
+	if !ok {
+		// It's possible account is not present, treat as non-fatal for now
+		logger.Debug("No 'account' field in registration response.")
+	}
+	license := "" // Default to empty string if not found or error occurs
+	if accountData != nil {
+		licenseVal, licenseOk := accountData["license"].(string)
+		if !licenseOk {
+			logger.Debug("Could not parse 'license' from account data or license is not a string.")
+			// Depending on requirements, this could be a fatal error.
+			// For now, we proceed with an empty license.
+		} else {
+			license = licenseVal
+		}
 	}
 
 	warpInfo, err := s.getWarpInfo(deviceId, token)
@@ -99,21 +117,59 @@ func (s *WarpService) RegisterWarp(ep *model.Endpoint) error {
 		return err
 	}
 
-	warpConfig, _ := warpDetails["config"].(map[string]interface{})
-	clientId, _ := warpConfig["client_id"].(string)
+	warpConfig, ok := warpDetails["config"].(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("could not parse 'config' from warp details")
+	}
+	clientId, ok := warpConfig["client_id"].(string)
+	if !ok {
+		return fmt.Errorf("could not parse 'client_id' from warp config")
+	}
 	reserved := s.getReserved(clientId)
-	interfaceConfig, _ := warpConfig["interface"].(map[string]interface{})
-	addresses, _ := interfaceConfig["addresses"].(map[string]interface{})
-	v4, _ := addresses["v4"].(string)
-	v6, _ := addresses["v6"].(string)
-	peer, _ := warpConfig["peers"].([]interface{})[0].(map[string]interface{})
-	peerEndpoint, _ := peer["endpoint"].(map[string]interface{})["host"].(string)
+	interfaceConfig, ok := warpConfig["interface"].(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("could not parse 'interface' from warp config")
+	}
+	addresses, ok := interfaceConfig["addresses"].(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("could not parse 'addresses' from interface config")
+	}
+	v4, ok := addresses["v4"].(string)
+	if !ok {
+		return fmt.Errorf("could not parse 'v4' address from addresses")
+	}
+	v6, ok := addresses["v6"].(string)
+	if !ok {
+		return fmt.Errorf("could not parse 'v6' address from addresses")
+	}
+	peersList, ok := warpConfig["peers"].([]interface{})
+	if !ok || len(peersList) == 0 {
+		return fmt.Errorf("could not parse 'peers' array or it is empty")
+	}
+	peer, ok := peersList[0].(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("could not parse first peer from peers list")
+	}
+	peerEndpointMap, ok := peer["endpoint"].(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("could not parse 'endpoint' from peer")
+	}
+	peerEndpoint, ok := peerEndpointMap["host"].(string)
+	if !ok {
+		return fmt.Errorf("could not parse 'host' from peer endpoint")
+	}
 	peerEpAddress, peerEpPort, err := net.SplitHostPort(peerEndpoint)
 	if err != nil {
-		return err
+		return fmt.Errorf("could not split host and port from peer endpoint: %w", err)
 	}
-	peerPublicKey, _ := peer["public_key"].(string)
-	peerPort, _ := strconv.Atoi(peerEpPort)
+	peerPublicKey, ok := peer["public_key"].(string)
+	if !ok {
+		return fmt.Errorf("could not parse 'public_key' from peer")
+	}
+	peerPort, err := strconv.Atoi(peerEpPort)
+	if err != nil {
+		return fmt.Errorf("could not convert peer port to int: %w", err)
+	}
 
 	peers := []map[string]interface{}{
 		{
@@ -214,9 +270,25 @@ func (s *WarpService) SetWarpLicense(old_license string, ep *model.Endpoint) err
 	}
 
 	if success, ok := response["success"].(bool); ok && success == false {
-		errorArr, _ := response["errors"].([]interface{})
-		errorObj := errorArr[0].(map[string]interface{})
-		return common.NewError(errorObj["code"], errorObj["message"])
+		errorsVal, ok := response["errors"].([]interface{})
+		if !ok || len(errorsVal) == 0 {
+			return common.NewError("unknown_error", "warp license update failed with no error details")
+		}
+		errorObj, ok := errorsVal[0].(map[string]interface{})
+		if !ok {
+			return common.NewError("unknown_error", "warp license update failed with malformed error details")
+		}
+		codeVal, codeOk := errorObj["code"]
+		msgVal, msgOk := errorObj["message"]
+		if !codeOk || !msgOk {
+			return common.NewError("unknown_error", "warp license update failed with incomplete error details")
+		}
+		codeStr, codeIsStr := codeVal.(string)
+		msgStr, msgIsStr := msgVal.(string)
+		if !codeIsStr || !msgIsStr { // Fallback if code or message are not strings
+			return common.NewError("unknown_error", fmt.Sprintf("warp license update failed: %v", errorObj))
+		}
+		return common.NewError(codeStr, msgStr)
 	}
 
 	return nil

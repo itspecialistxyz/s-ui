@@ -26,14 +26,24 @@ func (o *Endpoint) UnmarshalJSON(data []byte) error {
 	delete(raw, "id")
 	o.Type, _ = raw["type"].(string)
 	delete(raw, "type")
-	o.Tag = raw["tag"].(string)
+	if tagVal, ok := raw["tag"].(string); ok {
+		o.Tag = tagVal
+	} else {
+		o.Tag = ""
+	}
 	delete(raw, "tag")
-	o.Ext, _ = json.MarshalIndent(raw["ext"], "", "  ")
+	o.Ext, err = json.MarshalIndent(raw["ext"], "", "  ")
+	if err != nil {
+		return err
+	}
 	delete(raw, "ext")
 
 	// Remaining fields
 	o.Options, err = json.MarshalIndent(raw, "", "  ")
-	return err
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // MarshalJSON customizes marshalling
@@ -47,6 +57,10 @@ func (o Endpoint) MarshalJSON() ([]byte, error) {
 		combined["type"] = o.Type
 	}
 	combined["tag"] = o.Tag
+
+	if o.Ext != nil {
+		combined["ext"] = o.Ext // Add Ext field if it exists
+	}
 
 	if o.Options != nil {
 		var restFields map[string]json.RawMessage

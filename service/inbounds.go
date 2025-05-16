@@ -3,6 +3,7 @@ package service
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"s-ui/database"
 	"s-ui/database/model"
@@ -59,24 +60,45 @@ func (s *InboundService) GetAll() (*[]map[string]interface{}, error) {
 		if inbound.Options != nil {
 			var restFields map[string]json.RawMessage
 			if err := json.Unmarshal(inbound.Options, &restFields); err != nil {
-				return nil, err
-			}
-			inbData["listen"] = restFields["listen"]
-			inbData["listen_port"] = restFields["listen_port"]
-			if inbound.Type == "shadowtls" {
-				json.Unmarshal(restFields["version"], &shadowtls_version)
+				log.Printf("Warning: Failed to unmarshal options for inbound ID %d (Tag: %s): %v. Skipping options for this inbound.", inbound.Id, inbound.Tag, err)
+			} else {
+				if listen, ok := restFields["listen"]; ok {
+					inbData["listen"] = listen
+				}
+				if listenPort, ok := restFields["listen_port"]; ok {
+					inbData["listen_port"] = listenPort
+				}
+				if inbound.Type == "shadowtls" {
+					if versionRaw, ok := restFields["version"]; ok {
+						if err := json.Unmarshal(versionRaw, &shadowtls_version); err != nil {
+							log.Printf("Warning: Failed to unmarshal shadowtls version for inbound ID %d (Tag: %s): %v. Assuming version 0.", inbound.Id, inbound.Tag, err)
+							shadowtls_version = 0 // Explicitly set to 0 on error
+						}
+					} else {
+						log.Printf("Warning: Missing shadowtls version for inbound ID %d (Tag: %s). Assuming version 0.", inbound.Id, inbound.Tag)
+						shadowtls_version = 0 // Explicitly set to 0 if key is missing
+					}
+				}
 			}
 		}
 		if s.hasUser(inbound.Type) {
 			if inbound.Type == "shadowtls" && shadowtls_version < 3 {
-				break
+				log.Printf("Info: Skipping user fetching for shadowtls inbound ID %d (Tag: %s) due to version %d < 3.", inbound.Id, inbound.Tag, shadowtls_version)
+				// Removed 'break', using 'continue' if we want to skip this item and process others
+				// Or, if this item should still be added without users, this block can be just for logging.
+				// For now, let's assume we still add the inbound but without users if this condition is met.
+			} else {
+				users := []string{}
+				err = db.Raw("SELECT clients.name FROM clients, json_each(clients.inbounds) as je WHERE je.value = ?", inbound.Id).Scan(&users).Error
+				if err != nil {
+					// Decide on error handling: return error, or log and continue without users for this inbound
+					log.Printf("Warning: Failed to fetch users for inbound ID %d (Tag: %s): %v", inbound.Id, inbound.Tag, err)
+					// data = append(data, inbData) // Optionally add inbound even if user fetching fails
+					// continue
+					return nil, fmt.Errorf("failed to fetch users for inbound ID %d (Tag: %s): %w", inbound.Id, inbound.Tag, err) // Current: fail hard
+				}
+				inbData["users"] = users
 			}
-			users := []string{}
-			err = db.Raw("SELECT clients.name FROM clients, json_each(clients.inbounds) as je WHERE je.value = ?", inbound.Id).Scan(&users).Error
-			if err != nil {
-				return nil, err
-			}
-			inbData["users"] = users
 		}
 
 		data = append(data, inbData)
@@ -126,13 +148,20 @@ func (s *InboundService) Save(tx *gorm.DB, act string, data json.RawMessage, ini
 		if corePtr.IsRunning() {
 			if act == "edit" {
 				var oldTag string
-				err = tx.Model(model.Inbound{}).Select("tag").Where("id = ?", inbound.Id).Find(&oldTag).Error
+				err = tx.Model(&model.Inbound{}).Where("id = ?", inbound.Id).Pluck("tag", &oldTag).Error
 				if err != nil {
-					return 0, err
+					if err == gorm.ErrRecordNotFound {
+						log.Printf("Warning: Inbound ID %d not found when trying to retrieve old tag for edit. Proceeding as if it's a new entry for core operations.", inbound.Id)
+						oldTag = "" // Treat as if no old tag existed
+					} else {
+						return 0, fmt.Errorf("failed to retrieve old tag for inbound ID %d: %w", inbound.Id, err)
+					}
 				}
-				err = corePtr.RemoveInbound(oldTag)
-				if err != nil && err != os.ErrInvalid {
-					return 0, err
+				if oldTag != "" { // Only attempt removal if oldTag was found and is not empty
+					err = corePtr.RemoveInbound(oldTag)
+					if err != nil && err != os.ErrInvalid { // os.ErrInvalid might mean tag not found in core, which is fine
+						return 0, fmt.Errorf("failed to remove old inbound '%s' from core: %w", oldTag, err)
+					}
 				}
 			}
 
@@ -232,15 +261,32 @@ func (s *InboundService) hasUser(inboundType string) bool {
 
 func (s *InboundService) fetchUsers(db *gorm.DB, inboundType string, condition string, inbound map[string]interface{}) ([]json.RawMessage, error) {
 	if inboundType == "shadowtls" {
-		version, _ := inbound["version"].(float64)
-		if int(version) < 3 {
-			return nil, nil
+		if versionRaw, ok := inbound["version"]; ok {
+			var versionFloat float64
+			if err := json.Unmarshal(versionRaw.(json.RawMessage), &versionFloat); err != nil {
+				log.Printf("Warning: could not unmarshal shadowtls version from inbound options: %v. Assuming version 0.", err)
+				versionFloat = 0
+			}
+			if int(versionFloat) < 3 {
+				return nil, nil
+			}
+		} else {
+			log.Printf("Warning: shadowtls version not found in inbound options. Assuming version 0 for user fetching logic.")
+			return nil, nil // Or handle as version 0, which means no users for < 3
 		}
 	}
 	if inboundType == "shadowsocks" {
-		method, _ := inbound["method"].(string)
-		if method == "2022-blake3-aes-128-gcm" {
-			inboundType = "shadowsocks16"
+		if methodRaw, ok := inbound["method"]; ok {
+			var method string
+			if err := json.Unmarshal(methodRaw.(json.RawMessage), &method); err != nil {
+				log.Printf("Warning: could not unmarshal shadowsocks method from inbound options: %v", err)
+			} else {
+				if method == "2022-blake3-aes-128-gcm" {
+					inboundType = "shadowsocks16"
+				}
+			}
+		} else {
+			log.Printf("Warning: shadowsocks method not found in inbound options.")
 		}
 	}
 
